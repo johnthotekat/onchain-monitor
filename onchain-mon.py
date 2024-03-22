@@ -1,22 +1,51 @@
 import time
+
+import web3
 from web3 import Web3
 import json
 import requests
 import random
 
+from web3.middleware import geth_poa_middleware
 
-UNISWAP_FACTORY_V2="0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
-WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2"
+# # UNISWAP_FACTORY_V2="0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+# WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2"
+#
+#
+# UNISWAP_FACTORY_V2 = Web3.to_checksum_address("0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73")
+# WBNB_ADDRESS = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
+
+NETWORK = 'BSC'
+
+if NETWORK == 'BSC':
+    UNISWAP_FACTORY_V2 = Web3.to_checksum_address("0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73")
+    WETH_ADDRESS = '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c'
+    rpc_urls = ['https://bsc-dataseed1.binance.org/']
+elif NETWORK == 'ETH':
+        UNISWAP_FACTORY_V2 = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+        WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2"
+        rpc_urls = [
+            'https://mainnet.infura.io/v3/6c21df2a8dcb4a77b9bbcc1b65ee9ded',
+            # 'https://mainnet.infura.io/v3/ed18016b210c4a1baf828458bd16feb',
+            'https://mainnet.infura.io/v3/b2f4b3f635d8425c96854c3d28ba6bb0',
+            # 'https://mainnet.infura.io/v3/8b9750710d56460d940aeff47967c4ba',
+            'https://mainnet.infura.io/v3/6d6c70e65c77429482df5b64a4d0c943',
+            'https://mainnet.infura.io/v3/9928b52099854248b3a096be07a6b23c'
+        ]
+else:
+    raise Exception("Unknown Network")
 
 # Array of RPC URLs
-rpc_urls = [
-    "https://eth-mainnet.public.blastapi.io",
-    "https://ethereum.publicnode.com",
-    "https://rpc.flashbots.net/",
-    "https://cloudflare-eth.com/",
-    "https://ethereum.publicnode.com"
-    # Add more RPC URLs as needed
-]
+# rpc_urls = [
+#     'https://mainnet.infura.io/v3/6c21df2a8dcb4a77b9bbcc1b65ee9ded',
+#     # 'https://mainnet.infura.io/v3/ed18016b210c4a1baf828458bd16feb',
+#     'https://mainnet.infura.io/v3/b2f4b3f635d8425c96854c3d28ba6bb0',
+#     # 'https://mainnet.infura.io/v3/8b9750710d56460d940aeff47967c4ba',
+#     'https://mainnet.infura.io/v3/6d6c70e65c77429482df5b64a4d0c943',
+#     'https://mainnet.infura.io/v3/9928b52099854248b3a096be07a6b23c'
+# ]
+
+
 
 def switch_rpc_url():
     """Randomly switch the RPC URL for the Web3 provider."""
@@ -26,6 +55,7 @@ def switch_rpc_url():
 
 
 web3 = Web3(Web3.HTTPProvider(rpc_urls[0]))
+web3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 # Path to your ABI file
 abi_file_path = 'abis/uniswap-factory-abi.json'
@@ -270,7 +300,9 @@ def analyze_uniswap_transactions():
         # Convert block timestamp to human-readable format, if needed
         readable_timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(block_timestamp))
 
+        total_transactions_in_block = 0
         for tx in block.transactions:
+            total_transactions_in_block += 1
             # Assuming tx is a transaction in the block
             if tx.to:  # Only proceed if it's a transaction to a contract
                 receipt = web3.eth.get_transaction_receipt(tx.hash)
@@ -281,7 +313,19 @@ def analyze_uniswap_transactions():
                     # Example check for a Uniswap swap event signature
                     # This is highly simplified and would need to be adjusted for the specific Uniswap version and contract
                     swap_event_signature_hash = web3.keccak(text="Swap(address,uint256,uint256,uint256,uint256,address)").hex()
-                    
+                    swapETHForTokensSig = Web3.keccak(
+                        text='swapExactETHForTokens(uint256,address[],address,uint256)').hex()
+                    swapTokensForETHSig = Web3.keccak(
+                        text='swapExactTokensForETH(uint256,uint256,address[],address,uint256)').hex()
+
+                    # Assuming `log` is a log from a transaction receipt you're iterating over
+                    topic = log.topics[0].hex()  # No need to strip '0x' for comparison
+
+                    # Compare full topic hash
+                    if topic == swapETHForTokensSig:
+                        print("Event related to swapExactETHForTokens")
+                    elif topic == swapTokensForETHSig:
+                        print("Event related to swapExactTokensForETH")
 
                     if log.topics[0].hex() == swap_event_signature_hash:
                         pair_contract = web3.eth.contract(address=log.address, abi=uniswap_pair_abi)
@@ -305,7 +349,8 @@ def analyze_uniswap_transactions():
                             "transaction_hash": tx.hash.hex(),
                             "pair_address": log.address,
                             "transaction_type": "swap",
-                            "swap_type": "SELL" if token0_address == "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" else "BUY",
+                            # "swap_type": "SELL" if token0_address == "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" else "BUY",
+                            "swap_type": "SELL" if token0_address == "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c" else "BUY",
                             "base_token_address": token0_address,
                             "base_token_name": token0_name,
                             "base_token_decimals": token0_decimals,
@@ -315,7 +360,7 @@ def analyze_uniswap_transactions():
                             "quote_token_decimals": token1_decimals,
                             "quote_token_reserve": reserve1
                         }
-                        if (token0_address == "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" and reserve0 > 10) or (token1_address == "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" and reserve1 > 10):
+                        if (token0_address == "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c" and reserve0 >1000) or (token1_address == "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c" and reserve1 >1000):
                             print(data)
                             with open('abis/uniswap_transactions.json', 'a') as file:
                                 json.dump(data, file)
