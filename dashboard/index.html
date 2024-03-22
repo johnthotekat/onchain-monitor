@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Crypto Price Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+</head>
+<body>
+	
+	<div id="addPairContainer">
+    <!-- Current price will be displayed here -->
+        <select id="pairSelect" style="width: 200px;"></select>
+        <input type="number" id="targetPrice" placeholder="Target Price">
+		<input type="number" id="initialInvestment" placeholder="Investing amount">
+        <button id="addPair">Add Pair</button>
+	</div>
+
+    <div id="pricesContainer"></div>
+	
+	<!-- Modal -->
+	<div id="chartModal" class="modal">
+		<div class="modal-content">
+			<span class="close">&times;</span>
+			<canvas id="chartCanvas"></canvas>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <script src="dashboard.js"></script>
+	
+	
+</body>
+</html>
