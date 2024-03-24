@@ -32,6 +32,7 @@ This Python script is designed for interacting with the Ethereum blockchain and 
 1. Ensure the `uniswap-factory-abi.json` file is placed in the `abis` directory.
 2. Run the script:
 3. The script will automatically start analyzing Uniswap transactions and monitor liquidity.
+4. The RPC URL's used in the code are scrapped from Github code. Please use you own RPC URL's 
 
 ## Configuration
 
